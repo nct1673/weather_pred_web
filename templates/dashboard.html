@@ -3,37 +3,122 @@
 <head>
   <title>SkyCast Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .chart-container {
+      width: 90%;
+      margin: auto;
+    }
+  </style>
 </head>
 <body>
-  <h2>🌤️ Temperature Forecast</h2>
-  <canvas id="tempChart" width="800" height="400"></canvas>
+  <h2>🌤️ Weather Forecast Dashboard</h2>
+  <p>
+  <a href="/details" target="_blank">🔍 View Detailed Weather Charts</a>
+</p>
 
-  <script>
-    const ctx = document.getElementById('tempChart').getContext('2d');
-    const tempChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: {{ data | map(attribute='timestamp') | list | tojson }},
-        datasets: [{
-          label: 'Temperature (°C)',
-          data: {{ data | map(attribute='temp') | list | tojson }},
-          borderColor: 'orange',
-          borderWidth: 2,
-          fill: false,
-          tension: 0.2
-        }]
+  <div class="chart-container">
+    <h3>🌡️ Temperature & Feels Like</h3>
+    <canvas id="tempChart"></canvas>
+  </div>
+
+  <canvas id="tempChart"></canvas>
+
+<script>
+const data = {{ data | tojson }};
+const labels = data.map(d => d.timestamp);
+const weatherLabels = data.map(d => d.weather_pred);
+const temp = data.map(d => d.temp);
+const feels_like = data.map(d => d.feels_like);
+const predictions = weatherLabels;
+
+const weatherColors = {
+  'Clouds': 'rgba(200,200,200,0.2)',
+  'Rain': 'rgba(100,149,237,0.2)',
+  'Clear': 'rgba(255,255,100,0.2)',
+  'Snow': 'rgba(240,248,255,0.3)',
+  'Thunderstorm': 'rgba(200,100,255,0.2)'
+};
+
+const backgroundPlugin = {
+  id: 'weatherBackground',
+  beforeDatasetsDraw(chart, args, options) {
+    const {ctx, chartArea: {top, bottom}, scales: {x}} = chart;
+    for (let i = 0; i < labels.length; i++) {
+      const xStart = x.getPixelForValue(i - 0.5);
+      const xEnd = x.getPixelForValue(i + 0.5);
+      const pred = predictions[i];
+      const bgColor = weatherColors[pred] || 'transparent';
+
+      ctx.save();
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(xStart, top, xEnd - xStart, bottom - top);
+      ctx.restore();
+    }
+  }
+};
+
+new Chart(document.getElementById('tempChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [
+      {
+        label: 'Temperature (°C)',
+        data: temp,
+        borderColor: 'orange',
+        fill: false,
+        tension: 0.2,
+        xAxisID: 'x'
       },
-      options: {
-        scales: {
-          x: {
-            title: { display: true, text: 'Time' }
-          },
-          y: {
-            title: { display: true, text: 'Temperature (°C)' }
-          }
+      {
+        label: 'Feels Like (°C)',
+        data: feels_like,
+        borderColor: 'red',
+        fill: false,
+        tension: 0.2,
+        xAxisID: 'x'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      x: {
+        position: 'top',
+        ticks: {
+          callback: (value, index) => labels[index]
+        },
+        title: {
+          display: true,
+          text: 'Time (UTC+8)'
+        }
+      },
+      x2: {
+        position: 'bottom',
+        grid: {
+          drawOnChartArea: false
+        },
+        ticks: {
+          callback: (value, index) => weatherLabels[index]
+        },
+        title: {
+          display: true,
+          text: 'Weather Prediction'
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: '°C'
         }
       }
-    });
-  </script>
+    }
+  },
+  plugins: [backgroundPlugin]
+});
+</script>
+
 </body>
 </html>
+
+

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SkyCast Details</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      display: flex;
+      justify-content: space-between;
+      padding: 20px;
+    }
+    .left, .right {
+      width: 48%;
+    }
+    select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    canvas {
+      background-color: #f9f9f9;
+      border: 1px solid #ccc;
+    }
+    .info-box {
+      padding: 10px;
+      background: #eef;
+      border: 1px solid #99c;
+      border-radius: 5px;
+    }
+    .info-box p {
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <h2>🌦️ SkyCast Feature Explorer</h2>
+
+  <div class="container">
+    <!-- LEFT PANEL -->
+    <div class="left">
+      <label for="featureSelect">📊 Select Feature to Plot:</label>
+      <select id="featureSelect" size="10">
+        <option value="temp">Temperature (°C)</option>
+        <option value="feels_like">Feels Like (°C)</option>
+        <option value="pressure">Pressure (hPa)</option>
+        <option value="humidity">Humidity (%)</option>
+        <option value="dew_point">Dew Point (K)</option>
+        <option value="uvi">UV Index</option>
+        <option value="clouds">Clouds (%)</option>
+        <option value="wind_speed">Wind Speed (m/s)</option>
+        <option value="wind_deg">Wind Direction (°)</option>
+      </select>
+      <canvas id="featureChart" height="300"></canvas>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right">
+      <label for="timeSelect">🕒 Select Datetime:</label>
+      <select id="timeSelect" size="10"></select>
+
+      <div class="info-box" id="infoBox">
+        <p>📌 Select a time to view details.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const data = {{ data | tojson }};
+    const timestamps = data.map(d => d.timestamp);
+    const features = [
+      "temp", "feels_like", "pressure", "humidity", "dew_point",
+      "uvi", "clouds", "wind_speed", "wind_deg"
+    ];
+
+    const featureSelect = document.getElementById("featureSelect");
+    const timeSelect = document.getElementById("timeSelect");
+    const infoBox = document.getElementById("infoBox");
+    const ctx = document.getElementById("featureChart").getContext("2d");
+
+    // Populate time selector
+    timestamps.forEach((t, i) => {
+      const option = document.createElement("option");
+      option.value = i;
+      option.text = t;
+      timeSelect.appendChild(option);
+    });
+
+    // Create chart instance
+    let chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: timestamps,
+        datasets: [{
+          label: '',
+          data: [],
+          borderColor: 'teal',
+          fill: false,
+          tension: 0.2
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            title: { display: true, text: "Time" }
+          },
+          y: {
+            title: { display: true, text: "Value" }
+          }
+        }
+      }
+    });
+
+    // Update chart when feature changes
+    featureSelect.addEventListener("change", function () {
+      const selected = featureSelect.value;
+      const label = featureSelect.options[featureSelect.selectedIndex].text;
+      const values = data.map(d => d[selected]);
+
+      chart.data.datasets[0].label = label;
+      chart.data.datasets[0].data = values;
+      chart.update();
+    });
+
+    // Show detailed info when time changes
+    timeSelect.addEventListener("change", function () {
+      const idx = parseInt(timeSelect.value);
+      const entry = data[idx];
+
+      let html = `<p><strong>🕒 ${entry.timestamp}</strong></p><ul>`;
+      for (let key in entry) {
+        if (["timestamp", "lat", "lon", "timezone", "timezone_offset", "sunrise", "sunset", "dt"].includes(key)) continue;
+        html += `<li><strong>${key}</strong>: ${entry[key]}</li>`;
+      }
+      html += `</ul>`;
+      infoBox.innerHTML = html;
+    });
+  </script>
+</body>
+</html>
