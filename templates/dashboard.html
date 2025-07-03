@@ -1,124 +1,304 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>SkyCast Dashboard</title>
+  <meta charset="UTF-8">
+  <title>🌤️ Klang Weather Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    .chart-container {
-      width: 90%;
-      margin: auto;
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 20px;
     }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 5px;
+      font-size: 28px;
+      color: #333;
+    }
+
+    p {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      max-width: 1000px;
+      background: #fff;
+      margin: auto;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    select {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+
+    canvas {
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    .footer a {
+      text-decoration: none;
+      color: #007BFF;
+    }
+
   </style>
 </head>
 <body>
-  <h2>🌤️ Weather Forecast Dashboard</h2>
-  <p>
-  <a href="/details" target="_blank">🔍 View Detailed Weather Charts</a>
-</p>
 
-  <div class="chart-container">
-    <h3>🌡️ Temperature & Feels Like</h3>
+  <h2>🌤️ Weather Forecast in Klang, Selangor</h2>
+
+  <p>
+    <a href="/details" target="_blank">🔍 Click here to view weather feature details.</a>
+  </p>
+
+  <div class="card">
+    <div class="controls">
+      <label for="hourRange">🔍 Forecast Range:</label>
+      <select id="hourRange">
+        <option value="6">Next 6 Hours</option>
+        <option value="12" selected>Next 12 Hours</option>
+        <option value="24">Next 24 Hours</option>
+      </select>
+    </div>
+
     <canvas id="tempChart"></canvas>
   </div>
 
-  <canvas id="tempChart"></canvas>
+  <!-- <div class="footer">
+    <strong>Source:</strong>
+    <a href="https://openweathermap.org/" target="_blank">🔍 OpenWeatherMap</a>
+  </div> -->
 
-<script>
-const data = {{ data | tojson }};
-const labels = data.map(d => d.timestamp);
-const weatherLabels = data.map(d => d.weather_pred);
-const temp = data.map(d => d.temp);
-const feels_like = data.map(d => d.feels_like);
-const predictions = weatherLabels;
+  <script>
+    const data = {{ data | tojson }};
+    const timestamps = data.map(d => d.timestamp);
+    const predictions = data.map(d => d.weather_pred);
+    const temp = data.map(d => d.temp);
+    const feels_like = data.map(d => d.feels_like);
 
-const weatherColors = {
-  'Clouds': 'rgba(200,200,200,0.2)',
-  'Rain': 'rgba(100,149,237,0.2)',
-  'Clear': 'rgba(255,255,100,0.2)',
-  'Snow': 'rgba(240,248,255,0.3)',
-  'Thunderstorm': 'rgba(200,100,255,0.2)'
-};
+    const weatherColors = {
+      'Clouds': 'rgba(200,200,200,0.2)',
+      'Rain': 'rgba(0,150,255,0.3)',
+      'Clear': 'rgba(255,255,100,0.2)',
+      'Snow': 'rgba(100,149,237,0.2)',
+      'Thunderstorm': 'rgba(200,100,255,0.2)'
+    };
 
-const backgroundPlugin = {
-  id: 'weatherBackground',
-  beforeDatasetsDraw(chart, args, options) {
-    const {ctx, chartArea: {top, bottom}, scales: {x}} = chart;
-    for (let i = 0; i < labels.length; i++) {
-      const xStart = x.getPixelForValue(i - 0.5);
-      const xEnd = x.getPixelForValue(i + 0.5);
-      const pred = predictions[i];
-      const bgColor = weatherColors[pred] || 'transparent';
+    const backgroundPlugin = {
+      id: 'weatherBackground',
+      beforeDatasetsDraw(chart) {
+        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+        const labels = chart.data.labels;
+        const preds = chart.data.predictions;
 
-      ctx.save();
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(xStart, top, xEnd - xStart, bottom - top);
-      ctx.restore();
+        for (let i = 0; i < labels.length; i++) {
+          const xStart = x.getPixelForValue(i - 0.5);
+          const xEnd = x.getPixelForValue(i + 0.5);
+          const pred = preds[i];
+          const bgColor = weatherColors[pred] || 'transparent';
+
+          ctx.save();
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(xStart, top, xEnd - xStart, bottom - top);
+          ctx.restore();
+        }
+      }
+    };
+
+    const ctx = document.getElementById('tempChart').getContext('2d');
+    const chartConfig = {
+      type: 'line',
+      data: {
+        labels: [],
+        predictions: [],
+        datasets: [
+          {
+            label: 'Weather Temperature (°C)',
+            data: [],
+            borderColor: 'orange',
+            fill: false,
+            tension: 0.2
+          },
+          {
+            label: 'Human Perception Temperature (°C)',
+            data: [],
+            borderColor: 'red',
+            fill: false,
+            tension: 0.2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            position: 'top',
+            title: { display: true, text: 'Time' },
+            grid: { display: false }
+          },
+          x2: {
+            position: 'bottom',
+            grid: { display: false },
+            title: {
+              display: true,
+              text: 'Weather Forecast',
+              font: { size: 16, weight: 'bold' }
+            },
+            ticks: {
+              callback: (val, index) => chartConfig.data.predictions[index] || '',
+              font: { size: 14, weight: 'bold' },
+              color: '#333'
+            }
+          },
+          y: {
+            title: { display: true, text: '°C' },
+            grid: { display: false }
+          }
+        }
+      },
+      plugins: [backgroundPlugin]
+    };
+
+    const myChart = new Chart(ctx, chartConfig);
+
+    function updateChart(hours) {
+      const sliceCount = Math.min(hours, data.length);
+      myChart.data.labels = timestamps.slice(0, sliceCount);
+      myChart.data.datasets[0].data = temp.slice(0, sliceCount);
+      myChart.data.datasets[1].data = feels_like.slice(0, sliceCount);
+      myChart.data.predictions = predictions.slice(0, sliceCount);
+      myChart.update();
     }
-  }
+
+    document.getElementById('hourRange').addEventListener('change', function() {
+      updateChart(parseInt(this.value));
+    });
+
+    updateChart(12);
+  </script>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <div class="card" style="margin-top: 30px;">
+  <h3>📊 Feature Explorer</h3>
+
+  <select id="featureSelect" size="9" style="width:100%; padding:10px; border-radius:8px; margin-bottom:15px;">
+    <option value="temp">🌡️ Temperature (°C)</option>
+    <option value="feels_like">🔥 Feels Like (°C)</option>
+    <option value="pressure">🌪️ Pressure (hPa)</option>
+    <option value="humidity">💧 Humidity (%)</option>
+    <option value="dew_point">❄️ Dew Point (K)</option>
+    <option value="uvi">🌞 UV Index</option>
+    <option value="clouds">☁️ Clouds (%)</option>
+    <option value="wind_speed">💨 Wind Speed (m/s)</option>
+    <option value="wind_deg">🧭 Wind Direction (°)</option>
+  </select>
+
+  <canvas id="featureChart" height="200"></canvas>
+</div>
+<script>
+  const features = {
+  temp: data.map(d => d.temp),
+  feels_like: data.map(d => d.feels_like),
+  pressure: data.map(d => d.pressure),
+  humidity: data.map(d => d.humidity),
+  dew_point: data.map(d => d.dew_point),
+  uvi: data.map(d => d.uvi),
+  clouds: data.map(d => d.clouds),
+  wind_speed: data.map(d => d.wind_speed),
+  wind_deg: data.map(d => d.wind_deg)
 };
 
-new Chart(document.getElementById('tempChart').getContext('2d'), {
+const featureCtx = document.getElementById('featureChart').getContext('2d');
+const featureChart = new Chart(featureCtx, {
   type: 'line',
   data: {
-    labels: labels,
-    datasets: [
-      {
-        label: 'Temperature (°C)',
-        data: temp,
-        borderColor: 'orange',
-        fill: false,
-        tension: 0.2,
-        xAxisID: 'x'
-      },
-      {
-        label: 'Feels Like (°C)',
-        data: feels_like,
-        borderColor: 'red',
-        fill: false,
-        tension: 0.2,
-        xAxisID: 'x'
-      }
-    ]
+    labels: timestamps,
+    datasets: [{
+      label: '🌡️ Temperature (°C)',
+      data: features['temp'],
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+      fill: true,
+      tension: 0.3
+    }]
   },
   options: {
     responsive: true,
     scales: {
-      x: {
-        position: 'top',
-        ticks: {
-          callback: (value, index) => labels[index]
-        },
-        title: {
-          display: true,
-          text: 'Time (UTC+8)'
-        }
-      },
-      x2: {
-        position: 'bottom',
-        grid: {
-          drawOnChartArea: false
-        },
-        ticks: {
-          callback: (value, index) => weatherLabels[index]
-        },
-        title: {
-          display: true,
-          text: 'Weather Prediction'
-        }
-      },
-      y: {
-        title: {
-          display: true,
-          text: '°C'
-        }
-      }
+      x: { grid: { display: false } },
+      y: { grid: { display: false } }
     }
-  },
-  plugins: [backgroundPlugin]
+  }
 });
+
+document.getElementById('featureSelect').addEventListener('change', function() {
+  const selected = this.value;
+  const labelText = this.options[this.selectedIndex].text;
+  featureChart.data.datasets[0].label = labelText;
+  featureChart.data.datasets[0].data = features[selected];
+  featureChart.update();
+});
+
 </script>
 
+<div class="footer">
+    <strong>Source:</strong>
+    <a href="https://openweathermap.org/" target="_blank">🔍 OpenWeatherMap</a>
+  </div>
+  
 </body>
 </html>
+
+
 
 

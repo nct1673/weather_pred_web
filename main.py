@@ -18,6 +18,13 @@ def details():
         data = json.load(f)
     return render_template("details.html", data=data)
 
+@app.route('/eval')
+def eval():
+    filename = f'/home/{server_config}/weather_web/data/pred_out.json'
+    with open(filename) as f:
+        data = json.load(f)
+    return render_template("details2.html", data=data)
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
 

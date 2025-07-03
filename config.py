@@ -1,1 +1,1 @@
-server_config = 'ubuntu'
+server_config = 'chen'
